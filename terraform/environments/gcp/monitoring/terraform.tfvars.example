@@ -1,0 +1,7 @@
+project_id       = "my-gcp-project"
+cluster_name     = "observability"
+cluster_location = "us-central1"
+
+# Secrets: export them instead of writing them here.
+#   export TF_VAR_alertmanager_slack_webhook_url='https://hooks.slack.com/services/...'
+alertmanager_slack_channel = "#alerts"

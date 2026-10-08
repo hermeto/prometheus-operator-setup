@@ -1,0 +1,50 @@
+# Golden-signal rules for the sample application (examples/sample-app, podinfo).
+# Use them as a template for your own services: record the signals first, alert on the records.
+groups:
+  - name: sample-app.recording
+    rules:
+      - record: job:http_requests:rate5m
+        expr: sum by (namespace, job) (rate(http_request_duration_seconds_count{job="podinfo"}[5m]))
+
+      - record: job:http_errors:ratio_rate5m
+        expr: |
+          sum by (namespace, job) (rate(http_request_duration_seconds_count{job="podinfo", status=~"5.."}[5m]))
+          /
+          sum by (namespace, job) (rate(http_request_duration_seconds_count{job="podinfo"}[5m]))
+
+      - record: job:http_request_duration_seconds:p99_5m
+        expr: histogram_quantile(0.99, sum by (namespace, job, le) (rate(http_request_duration_seconds_bucket{job="podinfo"}[5m])))
+
+  - name: sample-app.alerts
+    rules:
+      - alert: SampleAppDown
+        # absent() only keeps labels from equality matchers outside the comparison, so set job explicitly.
+        expr: absent(up{job="podinfo"} == 1)
+        for: 5m
+        labels:
+          job: podinfo
+          severity: critical
+        annotations:
+          summary: No podinfo instance is up.
+          description: Prometheus has not scraped any healthy podinfo target for 5 minutes.
+          runbook_url: https://github.com/hermeto/prometheus-operator-setup/blob/master/docs/runbooks.md#sampleappdown
+
+      - alert: SampleAppHighErrorRate
+        expr: job:http_errors:ratio_rate5m > 0.05
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: podinfo is failing {{ $value | humanizePercentage }} of its requests.
+          description: More than 5% of the requests to {{ $labels.namespace }}/{{ $labels.job }} returned 5xx for 10 minutes.
+          runbook_url: https://github.com/hermeto/prometheus-operator-setup/blob/master/docs/runbooks.md#sampleapphigherrorrate
+
+      - alert: SampleAppHighLatency
+        expr: job:http_request_duration_seconds:p99_5m > 0.5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: podinfo p99 latency is {{ $value | humanizeDuration }}.
+          description: The 99th percentile latency of {{ $labels.namespace }}/{{ $labels.job }} has been above 500ms for 10 minutes.
+          runbook_url: https://github.com/hermeto/prometheus-operator-setup/blob/master/docs/runbooks.md#sampleapphighlatency

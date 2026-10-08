@@ -1,0 +1,85 @@
+# Opinionated defaults for kube-prometheus-stack.
+# Settings that depend on module inputs (storage, secrets, Alertmanager routing,
+# rules) are generated in main.tf and merged on top of this file.
+
+# Short, predictable resource names (kps-prometheus, kps-alertmanager, grafana...).
+fullnameOverride: kps
+
+# CRDs are installed and upgraded by the separate prometheus-operator-crds release,
+# because Helm never upgrades CRDs shipped in a chart's crds/ directory.
+crds:
+  enabled: false
+
+defaultRules:
+  create: true
+
+prometheusOperator:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
+
+prometheus:
+  prometheusSpec:
+    # Pick up ServiceMonitors, PodMonitors, Probes, ScrapeConfigs and PrometheusRules
+    # from every namespace, not only the ones labelled with this Helm release.
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    probeSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    scrapeConfigSelectorNilUsesHelmValues: false
+    walCompression: true
+    resources:
+      requests:
+        cpu: 200m
+        memory: 1Gi
+      limits:
+        memory: 2Gi
+
+alertmanager:
+  alertmanagerSpec:
+    resources:
+      requests:
+        cpu: 20m
+        memory: 64Mi
+      limits:
+        memory: 128Mi
+
+grafana:
+  fullnameOverride: grafana
+  defaultDashboardsTimezone: utc
+  # Dashboards are code (ConfigMaps); nothing worth keeping lives on a Grafana volume.
+  persistence:
+    enabled: false
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+      searchNamespace: ALL
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
+
+kube-state-metrics:
+  fullnameOverride: kube-state-metrics
+  resources:
+    requests:
+      cpu: 20m
+      memory: 64Mi
+    limits:
+      memory: 256Mi
+
+prometheus-node-exporter:
+  fullnameOverride: node-exporter
+  resources:
+    requests:
+      cpu: 20m
+      memory: 32Mi
+    limits:
+      memory: 64Mi

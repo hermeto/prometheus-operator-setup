@@ -1,0 +1,6 @@
+# Copy to backend.hcl and run: terraform init -backend-config=backend.hcl
+# Create the bucket once (versioning protects against state corruption):
+#   gcloud storage buckets create gs://<bucket> --location=<region> --uniform-bucket-level-access
+#   gcloud storage buckets update gs://<bucket> --versioning
+bucket = "my-terraform-state-bucket"
+prefix = "observability/monitoring"

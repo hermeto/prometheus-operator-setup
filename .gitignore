@@ -1,3 +1,31 @@
-*.tfstate.*
-.terraform
+# Terraform
+.terraform/
 *.tfstate
+*.tfstate.*
+*.tfplan
+tfplan
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+# Lock files are committed for root modules (environments) only.
+terraform/modules/**/.terraform.lock.hcl
+terraform/tests/**/.terraform.lock.hcl
+
+# Local configuration and secrets: commit the *.example files instead.
+terraform.tfvars
+*.auto.tfvars
+backend.hcl
+*.json.key
+kubeconfig*
+.env
+
+# Build output (rendered values, charts, manifests)
+build/
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
