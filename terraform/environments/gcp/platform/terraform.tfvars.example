@@ -1,0 +1,13 @@
+project_id = "my-gcp-project"
+region     = "us-central1"
+
+# Uncomment for a cheaper zonal cluster (single control plane replica).
+# zone = "us-central1-a"
+
+# Who may reach the Kubernetes API. Use your public IP (curl -s ifconfig.me) or VPN range.
+master_authorized_networks = [
+  { cidr_block = "203.0.113.10/32", display_name = "admin-workstation" },
+]
+
+# Non-production: Spot VMs cut node cost by ~60-90%.
+# spot = true

@@ -1,0 +1,152 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "helpers:pinGitHubActionDigests"
+  ],
+  "labels": [
+    "dependencies"
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "kube-prometheus-stack chart",
+      "managerFilePatterns": [
+        "/^terraform/modules/monitoring/variables\\.tf$/"
+      ],
+      "matchStrings": [
+        "variable \"chart_version\" \\{[^}]*?default\\s*=\\s*\"(?<currentValue>[^\"]+)\""
+      ],
+      "datasourceTemplate": "helm",
+      "depNameTemplate": "kube-prometheus-stack",
+      "registryUrlTemplate": "https://prometheus-community.github.io/helm-charts"
+    },
+    {
+      "customType": "regex",
+      "description": "prometheus-operator-crds chart",
+      "managerFilePatterns": [
+        "/^terraform/modules/monitoring/variables\\.tf$/"
+      ],
+      "matchStrings": [
+        "variable \"crds_chart_version\" \\{[^}]*?default\\s*=\\s*\"(?<currentValue>[^\"]+)\""
+      ],
+      "datasourceTemplate": "helm",
+      "depNameTemplate": "prometheus-operator-crds",
+      "registryUrlTemplate": "https://prometheus-community.github.io/helm-charts"
+    },
+    {
+      "customType": "regex",
+      "description": "Prometheus images used by the Makefile and scripts",
+      "managerFilePatterns": [
+        "/(^|/)Makefile$/",
+        "/^scripts/.+\\.sh$/"
+      ],
+      "matchStrings": [
+        "(?<depName>prom/[a-z-]+):(?<currentValue>v[0-9][0-9.]*)"
+      ],
+      "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "description": "Terraform",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/.+\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "TERRAFORM_VERSION: (?<currentValue>\\S+)"
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "hashicorp/terraform",
+      "extractVersionTemplate": "^v?(?<version>.*)$"
+    },
+    {
+      "customType": "regex",
+      "description": "tflint",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/.+\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "TFLINT_VERSION: v(?<currentValue>\\S+)"
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "terraform-linters/tflint",
+      "extractVersionTemplate": "^v?(?<version>.*)$"
+    },
+    {
+      "customType": "regex",
+      "description": "Helm",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/.+\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "HELM_VERSION: v(?<currentValue>\\S+)"
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "helm/helm",
+      "extractVersionTemplate": "^v?(?<version>.*)$"
+    },
+    {
+      "customType": "regex",
+      "description": "kubeconform",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/.+\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "KUBECONFORM_VERSION: v(?<currentValue>\\S+)"
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "yannh/kubeconform",
+      "extractVersionTemplate": "^v?(?<version>.*)$"
+    },
+    {
+      "customType": "regex",
+      "description": "trivy",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/.+\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "TRIVY_VERSION: (?<currentValue>\\S+)"
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "aquasecurity/trivy",
+      "extractVersionTemplate": "^v?(?<version>.*)$"
+    },
+    {
+      "customType": "regex",
+      "description": "kind",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/.+\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "KIND_VERSION: v(?<currentValue>\\S+)"
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "kubernetes-sigs/kind",
+      "extractVersionTemplate": "^v?(?<version>.*)$"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "The CRDs must always ship with the matching operator version",
+      "matchPackageNames": [
+        "kube-prometheus-stack",
+        "prometheus-operator-crds"
+      ],
+      "groupName": "kube-prometheus-stack"
+    },
+    {
+      "description": "Keep Helm on the v3 line used by the Terraform provider",
+      "matchPackageNames": [
+        "helm/helm"
+      ],
+      "allowedVersions": "<4"
+    },
+    {
+      "description": "kind node images are tied to a kind release: bump kind/cluster.yaml together with KIND_VERSION",
+      "matchPackageNames": [
+        "kindest/node"
+      ],
+      "enabled": false
+    }
+  ]
+}

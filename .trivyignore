@@ -1,0 +1,10 @@
+# Accepted findings of `trivy config`. Every entry needs a justification.
+
+# GCP-0072: allow-internal opens every port, but only to the VPC's own node, Pod and
+# Service ranges. Pods talk to each other on arbitrary ports across nodes; in-cluster
+# segmentation is enforced by NetworkPolicy (Dataplane V2), not by VPC firewall rules.
+GCP-0072
+
+# KSV-0125: the sample application pulls podinfo from Docker Hub on purpose so it runs
+# anywhere. Real workloads should pull from your own Artifact Registry.
+KSV-0125

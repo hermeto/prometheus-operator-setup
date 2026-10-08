@@ -1,0 +1,57 @@
+name: e2e
+
+# Deploys the whole stack on a kind cluster with Terraform and runs the smoke tests.
+on:
+  pull_request:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TERRAFORM_VERSION: 1.16.5
+  KIND_VERSION: v0.33.0
+  TF_IN_AUTOMATION: "true"
+
+jobs:
+  kind:
+    name: kind (terraform apply + smoke tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+      - uses: helm/kind-action@v1
+        with:
+          version: ${{ env.KIND_VERSION }}
+          install_only: true
+
+      - name: Create the cluster, deploy the stack and the sample app, run the smoke tests
+        run: make e2e
+
+      - name: Re-apply is a no-op (idempotency)
+        run: |
+          terraform -chdir=terraform/environments/local plan -input=false -detailed-exitcode \
+            -var kube_context=kind-observability
+
+      - name: Diagnostics
+        if: failure()
+        run: |
+          kubectl get nodes -o wide || true
+          kubectl get pods -A -o wide || true
+          kubectl get events -A --sort-by=.lastTimestamp | tail -n 100 || true
+          kubectl -n monitoring describe prometheus,alertmanager || true
+          kubectl -n monitoring logs deployment/kps-operator --tail=200 || true
+
+      - name: Tear down
+        if: always()
+        run: make local-down

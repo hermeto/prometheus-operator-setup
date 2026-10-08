@@ -1,0 +1,92 @@
+# podinfo, a small Go service that exposes Prometheus metrics, wired into the
+# monitoring stack with a ServiceMonitor. Rules and dashboard: monitoring/.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: demo
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: podinfo
+  namespace: demo
+  labels:
+    app.kubernetes.io/name: podinfo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: podinfo
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: podinfo
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: podinfo
+          image: docker.io/stefanprodan/podinfo:6.9.2
+          command: ["./podinfo", "--port=9898", "--port-metrics=9797", "--level=info"]
+          ports:
+            - name: http
+              containerPort: 9898
+            - name: http-metrics
+              containerPort: 9797
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: podinfo
+  namespace: demo
+  labels:
+    app.kubernetes.io/name: podinfo
+spec:
+  selector:
+    app.kubernetes.io/name: podinfo
+  ports:
+    - name: http
+      port: 9898
+      targetPort: http
+    - name: http-metrics
+      port: 9797
+      targetPort: http-metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: podinfo
+  namespace: demo
+spec:
+  # The job label becomes the Service name: job="podinfo".
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: podinfo
+  endpoints:
+    - port: http-metrics
+      interval: 15s

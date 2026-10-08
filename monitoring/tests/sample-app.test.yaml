@@ -1,0 +1,96 @@
+# Unit tests for monitoring/rules/sample-app.rules.yaml. Run with `make test-rules`.
+rule_files:
+  - ../rules/sample-app.rules.yaml
+
+evaluation_interval: 1m
+
+tests:
+  - name: healthy service raises no alert
+    interval: 1m
+    input_series:
+      - series: 'up{job="podinfo", namespace="demo", instance="10.0.0.1:9797"}'
+        values: "1x30"
+      - series: 'http_request_duration_seconds_count{job="podinfo", namespace="demo", status="200"}'
+        values: "0+600x30"
+      - series: 'http_request_duration_seconds_count{job="podinfo", namespace="demo", status="500"}'
+        values: "0+1x30"
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: SampleAppDown
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: SampleAppHighErrorRate
+        exp_alerts: []
+
+  - name: service down for 5 minutes
+    interval: 1m
+    input_series:
+      - series: 'up{job="podinfo", namespace="demo", instance="10.0.0.1:9797"}'
+        values: "1x5 0x10"
+    alert_rule_test:
+      - eval_time: 8m
+        alertname: SampleAppDown
+        exp_alerts: []
+      - eval_time: 12m
+        alertname: SampleAppDown
+        exp_alerts:
+          - exp_labels:
+              job: podinfo
+              severity: critical
+            exp_annotations:
+              summary: No podinfo instance is up.
+              description: Prometheus has not scraped any healthy podinfo target for 5 minutes.
+              runbook_url: https://github.com/hermeto/prometheus-operator-setup/blob/master/docs/runbooks.md#sampleappdown
+
+  - name: error ratio above 5% for 10 minutes
+    interval: 1m
+    input_series:
+      # 48 requests/min succeed, 16 requests/min fail: 25% error ratio.
+      - series: 'http_request_duration_seconds_count{job="podinfo", namespace="demo", status="200"}'
+        values: "0+48x30"
+      - series: 'http_request_duration_seconds_count{job="podinfo", namespace="demo", status="500"}'
+        values: "0+16x30"
+    promql_expr_test:
+      - expr: job:http_errors:ratio_rate5m
+        eval_time: 20m
+        exp_samples:
+          - labels: 'job:http_errors:ratio_rate5m{job="podinfo", namespace="demo"}'
+            value: 0.25
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: SampleAppHighErrorRate
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: SampleAppHighErrorRate
+        exp_alerts:
+          - exp_labels:
+              job: podinfo
+              namespace: demo
+              severity: warning
+            exp_annotations:
+              summary: podinfo is failing 25% of its requests.
+              description: More than 5% of the requests to demo/podinfo returned 5xx for 10 minutes.
+              runbook_url: https://github.com/hermeto/prometheus-operator-setup/blob/master/docs/runbooks.md#sampleapphigherrorrate
+
+  - name: slow requests raise the latency alert
+    interval: 1m
+    input_series:
+      # Every request lands in the (0.5, 1] bucket.
+      - series: 'http_request_duration_seconds_bucket{job="podinfo", namespace="demo", le="0.5"}'
+        values: "0x30"
+      - series: 'http_request_duration_seconds_bucket{job="podinfo", namespace="demo", le="1"}'
+        values: "0+60x30"
+      - series: 'http_request_duration_seconds_bucket{job="podinfo", namespace="demo", le="+Inf"}'
+        values: "0+60x30"
+    alert_rule_test:
+      - eval_time: 25m
+        alertname: SampleAppHighLatency
+        exp_alerts:
+          - exp_labels:
+              job: podinfo
+              namespace: demo
+              severity: warning
+            exp_annotations:
+              summary: podinfo p99 latency is 995ms.
+              description: The 99th percentile latency of demo/podinfo has been above 500ms for 10 minutes.
+              runbook_url: https://github.com/hermeto/prometheus-operator-setup/blob/master/docs/runbooks.md#sampleapphighlatency

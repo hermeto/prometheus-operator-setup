@@ -1,0 +1,28 @@
+# GKE overrides.
+
+# GKE runs kube-dns, not CoreDNS.
+coreDns:
+  enabled: false
+kubeDns:
+  enabled: true
+
+alertmanager:
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+
+prometheus:
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+
+# Expose Grafana through an HTTPS load balancer protected by IAP, for example:
+# grafana:
+#   ingress:
+#     enabled: true
+#     ingressClassName: gce
+#     hosts: [grafana.example.com]
+#     annotations:
+#       networking.gke.io/managed-certificates: grafana
+#       kubernetes.io/ingress.allow-http: "false"
+# Until then, use `kubectl port-forward` (see the port_forward_commands output).
